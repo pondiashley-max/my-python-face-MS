@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+
+# macOS / IDEs
+.DS_Store
+.idea/
+.vscode/
+
+# Local runtime biometric data, portraits & cached ONNX models
+pondi_fms_data/
+*.db
+*.db-wal
+*.db-shm

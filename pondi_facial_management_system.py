@@ -44,7 +44,9 @@ import secrets
 import shutil
 import platform
 import sqlite3
+import struct
 import sys
+import tempfile
 import threading
 import time
 import unicodedata
@@ -484,16 +486,42 @@ def sanitize_ascii(text: str) -> str:
     return normalized.encode("ascii", "ignore").decode("ascii")
 
 
+def _pbkdf2_hmac_sha256_pure(
+    password: bytes,
+    salt: bytes,
+    iterations: int = 200_000,
+    dklen: int = 32,
+) -> bytes:
+    """Exact RFC 2898 PBKDF2-HMAC-SHA256 fallback if OpenSSL _hashlib is unavailable in frozen bundles."""
+    prf_base = hmac.new(password, b"", hashlib.sha256)
+    out = bytearray()
+    block = 1
+    while len(out) < dklen:
+        m = prf_base.copy()
+        m.update(salt + struct.pack(">I", block))
+        u = m.digest()
+        acc = int.from_bytes(u, "big")
+        for _ in range(iterations - 1):
+            m = prf_base.copy()
+            m.update(u)
+            u = m.digest()
+            acc ^= int.from_bytes(u, "big")
+        out.extend(acc.to_bytes(32, "big"))
+        block += 1
+    return bytes(out[:dklen])
+
+
 def hash_password(password: str, salt_hex: Optional[str] = None) -> Tuple[str, str]:
     """Return (salt_hex, pbkdf2_sha256_hash_hex)."""
     if salt_hex is None:
         salt_hex = secrets.token_hex(16)
-    dk = hashlib.pbkdf2_hmac(
-        "sha256",
-        password.encode("utf-8"),
-        bytes.fromhex(salt_hex),
-        200_000,
-    )
+    pw_bytes = password.encode("utf-8")
+    salt_bytes = bytes.fromhex(salt_hex)
+    pbkdf2_fn = getattr(hashlib, "pbkdf2_hmac", None)
+    if callable(pbkdf2_fn):
+        dk = pbkdf2_fn("sha256", pw_bytes, salt_bytes, 200_000)
+    else:
+        dk = _pbkdf2_hmac_sha256_pure(pw_bytes, salt_bytes, 200_000)
     return salt_hex, dk.hex()
 
 
@@ -5864,6 +5892,28 @@ class PondiFacialManagementApp(QMainWindow):
 
 
 def main() -> int:
+    if "--smoke-test" in sys.argv:
+        os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+        tmp_dir = tempfile.mkdtemp(prefix="pfms_smoke_")
+        try:
+            tmp_db = os.path.join(tmp_dir, "smoke.db")
+            app = QApplication([sys.argv[0]])
+            app.setStyleSheet(APP_STYLESHEET)
+            window = PondiFacialManagementApp(db_path=tmp_db)
+            adm = window.db.authenticate_admin(DEFAULT_ADMIN_USER, DEFAULT_ADMIN_PASS)
+            assert adm is not None, "Default admin authentication failed"
+            assert window.engine.engine_type == "sface", (
+                f"Expected bundled YuNet+SFace ONNX engine, got {window.engine.engine_type}"
+            )
+            window.close()
+            print(
+                f"SMOKE TEST PASSED | {platform.system()} {platform.machine()} "
+                f"({platform.architecture()[0]}) | {QT_BINDING} | {window.engine.engine_label}"
+            )
+            return 0
+        finally:
+            shutil.rmtree(tmp_dir, ignore_errors=True)
+
     ensure_data_directories()
     app = QApplication(sys.argv)
     app.setApplicationName(APP_NAME)

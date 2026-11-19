@@ -87,13 +87,17 @@ jobs:
             --exclude-module tkinter `
             pondi_facial_management_system.py
 
-      - name: Verify built Windows executable
+      - name: Verify & smoke-test built Windows executable
         shell: pwsh
         run: |
           $exe = "dist\${{ matrix.exe_name }}.exe"
           if (-not (Test-Path $exe)) { throw "Executable not found: $exe" }
           $info = Get-Item $exe
           Write-Host "Built: $($info.FullName) ($([math]::Round($info.Length / 1MB, 2)) MB)"
+          $env:QT_QPA_PLATFORM = "offscreen"
+          $p = Start-Process -FilePath $info.FullName -ArgumentList "--smoke-test" -PassThru -Wait
+          if ($p.ExitCode -ne 0) { throw "Smoke test failed with exit code $($p.ExitCode)" }
+          Write-Host "Windows executable smoke-test PASSED (exit code 0)!"
 
       - name: Upload Windows .exe artifact
         uses: actions/upload-artifact@v4
@@ -161,7 +165,7 @@ jobs:
             --exclude-module tkinter \
             pondi_facial_management_system.py
 
-      - name: Configure macOS Camera Permission & Ad-Hoc Sign .app
+      - name: Configure macOS Camera Permission, Ad-Hoc Sign & Smoke-Test .app
         run: |
           PLIST="dist/PONDI Facial Management System.app/Contents/Info.plist"
           /usr/libexec/PlistBuddy -c "Delete :NSCameraUsageDescription" "$PLIST" 2>/dev/null || true
@@ -169,6 +173,7 @@ jobs:
           /usr/libexec/PlistBuddy -c "Delete :NSHighResolutionCapable" "$PLIST" 2>/dev/null || true
           /usr/libexec/PlistBuddy -c "Add :NSHighResolutionCapable bool true" "$PLIST"
           codesign --force --deep --sign - "dist/PONDI Facial Management System.app"
+          QT_QPA_PLATFORM=offscreen "dist/PONDI Facial Management System.app/Contents/MacOS/PONDI Facial Management System" --smoke-test
           ditto -c -k --sequesterRsrc --keepParent "dist/PONDI Facial Management System.app" "dist/${{ matrix.zip_name }}"
           ls -lh "dist/${{ matrix.zip_name }}"
 

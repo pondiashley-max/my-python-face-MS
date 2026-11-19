@@ -83,7 +83,9 @@ An all-in-one, single-file **University Biometric Face Recognition, Student Regi
 
 ### Runtime Data Storage
 
-At runtime, the application automatically creates a local `pondi_fms_data/` directory (excluded from Git via `.gitignore`):
+At runtime, the application automatically creates a persistent `pondi_fms_data/` directory (excluded from Git via `.gitignore`):
+- **Python script / Windows `.exe`:** stored right beside the script or `.exe` (falls back to `%LOCALAPPDATA%\PONDI_Facial_Management_System` if installed in a read-only folder like `Program Files`).
+- **macOS `.app` bundle:** stored in `~/Library/Application Support/PONDI_Facial_Management_System/pondi_fms_data/`.
 
 ```text
 pondi_fms_data/
@@ -91,6 +93,25 @@ pondi_fms_data/
 ├── photos/             # Saved front ID portraits (<MATRICULE>_front.jpg)
 └── models/             # Cached YuNet & SFace ONNX models (if downloaded via Settings)
 ```
+
+---
+
+### Desktop Executables (Windows `.exe` & macOS `.app`) — Multi-Architecture
+
+This repository includes an automated GitHub Actions workflow ([`.github/workflows/build-desktop-apps.yml`](./.github/workflows/build-desktop-apps.yml)) that compiles standalone desktop executables with both YuNet & SFace ONNX models bundled inside:
+
+| Target Platform | CPU Architectures Supported | Qt Binding | Output Artifact |
+| --- | --- | --- | --- |
+| **Windows 64-bit** | Intel x64, AMD64 (and Windows 11 ARM64 via Prism) | PyQt5 | `PONDI_Facial_Management_System-Windows-x64.exe` |
+| **Windows 32-bit** | x86 (32-bit Intel & AMD) | PyQt5 | `PONDI_Facial_Management_System-Windows-x86-32bit.exe` |
+| **Windows ARM64** | Native ARM64 (Qualcomm Snapdragon / ARM PCs) | PyQt6 | `PONDI_Facial_Management_System-Windows-ARM64.exe` |
+| **macOS Apple Silicon** | Native ARM64 (M1 / M2 / M3 / M4) | PyQt5 | `PONDI_Facial_Management_System-macOS-ARM64.zip` (`.app`) |
+| **macOS Intel** | Native Intel x86_64 (and Apple Silicon via Rosetta 2) | PyQt5 | `PONDI_Facial_Management_System-macOS-Intel-x64.zip` (`.app`) |
+
+**How to download the compiled `.exe` / `.app` from GitHub:**
+1. Open the [**Actions**](https://github.com/pondiashley-max/python-projects/actions) tab on GitHub.
+2. Click the latest **`Build Desktop Apps (Windows .exe & macOS .app)`** workflow run.
+3. Scroll to **Artifacts** and download the build matching your platform/CPU architecture.
 
 ---
 

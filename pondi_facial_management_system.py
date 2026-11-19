@@ -42,6 +42,7 @@ import os
 import re
 import secrets
 import shutil
+import platform
 import sqlite3
 import sys
 import threading
@@ -59,48 +60,171 @@ if "QT_QPA_PLATFORM_PLUGIN_PATH" in os.environ and "cv2" in os.environ.get("QT_Q
 import cv2
 import numpy as np
 
-from PyQt5.QtCore import QDate, QSize, Qt, QTimer, pyqtSignal
-from PyQt5.QtGui import (
-    QColor,
-    QFont,
-    QImage,
-    QPainter,
-    QPainterPath,
-    QPen,
-    QPixmap,
-)
-from PyQt5.QtWidgets import (
-    QAbstractItemView,
-    QApplication,
-    QCheckBox,
-    QComboBox,
-    QDateEdit,
-    QDialog,
-    QFileDialog,
-    QFormLayout,
-    QFrame,
-    QGridLayout,
-    QHBoxLayout,
-    QHeaderView,
-    QInputDialog,
-    QLabel,
-    QLineEdit,
-    QMainWindow,
-    QMessageBox,
-    QProgressBar,
-    QPushButton,
-    QScrollArea,
-    QSizePolicy,
-    QSlider,
-    QSpinBox,
-    QSplitter,
-    QStackedWidget,
-    QTableWidget,
-    QTableWidgetItem,
-    QTextEdit,
-    QVBoxLayout,
-    QWidget,
-)
+# Dual PyQt5 / PyQt6 support for full multi-architecture compatibility:
+#   - PyQt5: Windows x64 (Intel/AMD), Windows x86 (32-bit), macOS Intel x64, macOS Apple Silicon ARM64
+#   - PyQt6: Native Windows ARM64 + universal macOS/Windows x64
+try:
+    from PyQt5.QtCore import QDate, QSize, Qt, QTimer, pyqtSignal
+    from PyQt5.QtGui import (
+        QColor,
+        QFont,
+        QImage,
+        QPainter,
+        QPainterPath,
+        QPen,
+        QPixmap,
+    )
+    from PyQt5.QtWidgets import (
+        QAbstractItemView,
+        QApplication,
+        QCheckBox,
+        QComboBox,
+        QDateEdit,
+        QDialog,
+        QFileDialog,
+        QFormLayout,
+        QFrame,
+        QGridLayout,
+        QHBoxLayout,
+        QHeaderView,
+        QInputDialog,
+        QLabel,
+        QLineEdit,
+        QMainWindow,
+        QMessageBox,
+        QProgressBar,
+        QPushButton,
+        QScrollArea,
+        QSizePolicy,
+        QSlider,
+        QSpinBox,
+        QSplitter,
+        QStackedWidget,
+        QTableWidget,
+        QTableWidgetItem,
+        QTextEdit,
+        QVBoxLayout,
+        QWidget,
+    )
+
+    QT_BINDING = "PyQt5"
+    ALIGN_CENTER = Qt.AlignCenter
+    ALIGN_HCENTER = Qt.AlignHCenter
+    ALIGN_RIGHT = Qt.AlignRight
+    ALIGN_TOP = Qt.AlignTop
+    ALIGN_VCENTER = Qt.AlignVCenter
+    ORIENT_HORIZONTAL = Qt.Horizontal
+    ASPECT_KEEP = Qt.KeepAspectRatio
+    ASPECT_KEEP_EXPAND = Qt.KeepAspectRatioByExpanding
+    LEFT_BUTTON = Qt.LeftButton
+    NO_BRUSH = Qt.NoBrush
+    NO_PEN = Qt.NoPen
+    CURSOR_HAND = Qt.PointingHandCursor
+    CURSOR_WAIT = Qt.WaitCursor
+    SCROLLBAR_OFF = Qt.ScrollBarAlwaysOff
+    SCROLLBAR_AS_NEEDED = Qt.ScrollBarAsNeeded
+    SMOOTH_TRANSFORM = Qt.SmoothTransformation
+    COLOR_TRANSPARENT = Qt.transparent
+    IMG_FORMAT_RGB888 = QImage.Format_RGB888
+    PAINTER_ANTIALIASING = QPainter.Antialiasing
+    FRAME_HLINE = QFrame.HLine
+    HDR_FIXED = QHeaderView.Fixed
+    HDR_INTERACTIVE = QHeaderView.Interactive
+    HDR_RESIZE_TO_CONTENTS = QHeaderView.ResizeToContents
+    HDR_STRETCH = QHeaderView.Stretch
+    EDIT_NONE = QAbstractItemView.NoEditTriggers
+    SELECT_ROWS = QAbstractItemView.SelectRows
+    ECHO_NORMAL = QLineEdit.Normal
+    ECHO_PASSWORD = QLineEdit.Password
+    MSG_YES = QMessageBox.Yes
+    MSG_NO = QMessageBox.No
+    DIALOG_ACCEPTED = QDialog.Accepted
+    SP_EXPANDING = QSizePolicy.Expanding
+    SP_FIXED = QSizePolicy.Fixed
+    SP_MIN_EXPANDING = QSizePolicy.MinimumExpanding
+    FORM_ALL_GROW = QFormLayout.AllNonFixedFieldsGrow
+    FONT_BOLD = QFont.Bold
+except ImportError:
+    from PyQt6.QtCore import QDate, QSize, Qt, QTimer, pyqtSignal
+    from PyQt6.QtGui import (
+        QColor,
+        QFont,
+        QImage,
+        QPainter,
+        QPainterPath,
+        QPen,
+        QPixmap,
+    )
+    from PyQt6.QtWidgets import (
+        QAbstractItemView,
+        QApplication,
+        QCheckBox,
+        QComboBox,
+        QDateEdit,
+        QDialog,
+        QFileDialog,
+        QFormLayout,
+        QFrame,
+        QGridLayout,
+        QHBoxLayout,
+        QHeaderView,
+        QInputDialog,
+        QLabel,
+        QLineEdit,
+        QMainWindow,
+        QMessageBox,
+        QProgressBar,
+        QPushButton,
+        QScrollArea,
+        QSizePolicy,
+        QSlider,
+        QSpinBox,
+        QSplitter,
+        QStackedWidget,
+        QTableWidget,
+        QTableWidgetItem,
+        QTextEdit,
+        QVBoxLayout,
+        QWidget,
+    )
+
+    QT_BINDING = "PyQt6"
+    ALIGN_CENTER = Qt.AlignmentFlag.AlignCenter
+    ALIGN_HCENTER = Qt.AlignmentFlag.AlignHCenter
+    ALIGN_RIGHT = Qt.AlignmentFlag.AlignRight
+    ALIGN_TOP = Qt.AlignmentFlag.AlignTop
+    ALIGN_VCENTER = Qt.AlignmentFlag.AlignVCenter
+    ORIENT_HORIZONTAL = Qt.Orientation.Horizontal
+    ASPECT_KEEP = Qt.AspectRatioMode.KeepAspectRatio
+    ASPECT_KEEP_EXPAND = Qt.AspectRatioMode.KeepAspectRatioByExpanding
+    LEFT_BUTTON = Qt.MouseButton.LeftButton
+    NO_BRUSH = Qt.BrushStyle.NoBrush
+    NO_PEN = Qt.PenStyle.NoPen
+    CURSOR_HAND = Qt.CursorShape.PointingHandCursor
+    CURSOR_WAIT = Qt.CursorShape.WaitCursor
+    SCROLLBAR_OFF = Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+    SCROLLBAR_AS_NEEDED = Qt.ScrollBarPolicy.ScrollBarAsNeeded
+    SMOOTH_TRANSFORM = Qt.TransformationMode.SmoothTransformation
+    COLOR_TRANSPARENT = Qt.GlobalColor.transparent
+    IMG_FORMAT_RGB888 = QImage.Format.Format_RGB888
+    PAINTER_ANTIALIASING = QPainter.RenderHint.Antialiasing
+    FRAME_HLINE = QFrame.Shape.HLine
+    HDR_FIXED = QHeaderView.ResizeMode.Fixed
+    HDR_INTERACTIVE = QHeaderView.ResizeMode.Interactive
+    HDR_RESIZE_TO_CONTENTS = QHeaderView.ResizeMode.ResizeToContents
+    HDR_STRETCH = QHeaderView.ResizeMode.Stretch
+    EDIT_NONE = QAbstractItemView.EditTrigger.NoEditTriggers
+    SELECT_ROWS = QAbstractItemView.SelectionBehavior.SelectRows
+    ECHO_NORMAL = QLineEdit.EchoMode.Normal
+    ECHO_PASSWORD = QLineEdit.EchoMode.Password
+    MSG_YES = QMessageBox.StandardButton.Yes
+    MSG_NO = QMessageBox.StandardButton.No
+    DIALOG_ACCEPTED = QDialog.DialogCode.Accepted
+    SP_EXPANDING = QSizePolicy.Policy.Expanding
+    SP_FIXED = QSizePolicy.Policy.Fixed
+    SP_MIN_EXPANDING = QSizePolicy.Policy.MinimumExpanding
+    FORM_ALL_GROW = QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow
+    FONT_BOLD = QFont.Weight.Bold
 
 
 # =============================================================================
@@ -109,9 +233,33 @@ from PyQt5.QtWidgets import (
 
 APP_NAME = "PONDI Facial Management System"
 APP_SHORT = "PFMS"
-APP_VERSION = "2.0.0"
+APP_VERSION = "2.1.0"
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+def _resolve_runtime_dirs() -> Tuple[str, str]:
+    """
+    Resolve (persistent_data_root, bundled_resources_root) safely for both
+    plain Python scripts and PyInstaller frozen desktop executables (.exe / .app).
+    """
+    if getattr(sys, "frozen", False):
+        exe_dir = os.path.dirname(os.path.abspath(sys.executable))
+        bundle_dir = getattr(sys, "_MEIPASS", exe_dir)
+        if sys.platform == "darwin":
+            data_root = os.path.expanduser(
+                "~/Library/Application Support/PONDI_Facial_Management_System"
+            )
+        else:
+            if os.access(exe_dir, os.W_OK):
+                data_root = exe_dir
+            else:
+                local_app = os.environ.get("LOCALAPPDATA") or os.path.expanduser("~")
+                data_root = os.path.join(local_app, "PONDI_Facial_Management_System")
+        return data_root, bundle_dir
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    return script_dir, script_dir
+
+
+BASE_DIR, BUNDLE_DIR = _resolve_runtime_dirs()
 DATA_DIR = os.path.join(BASE_DIR, "pondi_fms_data")
 PHOTOS_DIR = os.path.join(DATA_DIR, "photos")
 MODELS_CACHE_DIR = os.path.join(DATA_DIR, "models")
@@ -1400,12 +1548,23 @@ class FaceRecognitionEngine:
 
     @staticmethod
     def _candidate_model_dirs() -> List[str]:
-        return [
+        candidates = [
+            BUNDLE_DIR,
+            os.path.join(BUNDLE_DIR, "models"),
+            os.path.join(BUNDLE_DIR, "Mes models"),
             os.path.join(BASE_DIR, "Mes models"),
             BASE_DIR,
             MODELS_CACHE_DIR,
             os.path.join(BASE_DIR, "models"),
         ]
+        seen = set()
+        ordered: List[str] = []
+        for c in candidates:
+            norm = os.path.abspath(c)
+            if norm not in seen:
+                seen.add(norm)
+                ordered.append(c)
+        return ordered
 
     @classmethod
     def locate_onnx_models(cls) -> Tuple[Optional[str], Optional[str]]:
@@ -1744,7 +1903,7 @@ class FaceRecognitionEngine:
 def bgr_to_qpixmap(frame_bgr: np.ndarray) -> QPixmap:
     rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
     h, w, ch = rgb.shape
-    qimg = QImage(rgb.data, w, h, ch * w, QImage.Format_RGB888).copy()
+    qimg = QImage(rgb.data, w, h, ch * w, IMG_FORMAT_RGB888).copy()
     return QPixmap.fromImage(qimg)
 
 
@@ -1752,7 +1911,7 @@ def make_placeholder_portrait(name: str, width: int = 136, height: int = 156) ->
     pix = QPixmap(width, height)
     pix.fill(QColor("#1e293b"))
     painter = QPainter(pix)
-    painter.setRenderHint(QPainter.Antialiasing)
+    painter.setRenderHint(PAINTER_ANTIALIASING)
 
     # Subtle rounded border
     painter.setPen(QPen(QColor("#334155"), 2))
@@ -1765,17 +1924,17 @@ def make_placeholder_portrait(name: str, width: int = 136, height: int = 156) ->
     circ_d = min(width, height) // 2
     cx = (width - circ_d) // 2
     cy = (height - circ_d) // 2 - 8
-    painter.setPen(Qt.NoPen)
+    painter.setPen(NO_PEN)
     painter.setBrush(QColor("#2563eb"))
     painter.drawEllipse(cx, cy, circ_d, circ_d)
 
     painter.setPen(QColor("#ffffff"))
-    painter.setFont(QFont("Helvetica Neue", max(14, circ_d // 3), QFont.Bold))
-    painter.drawText(cx, cy, circ_d, circ_d, Qt.AlignCenter, initials)
+    painter.setFont(QFont("Helvetica Neue", max(14, circ_d // 3), FONT_BOLD))
+    painter.drawText(cx, cy, circ_d, circ_d, ALIGN_CENTER, initials)
 
     painter.setPen(QColor("#94a3b8"))
     painter.setFont(QFont("Helvetica Neue", 9))
-    painter.drawText(0, height - 28, width, 20, Qt.AlignCenter, "No Front Photo")
+    painter.drawText(0, height - 28, width, 20, ALIGN_CENTER, "No Front Photo")
     painter.end()
     return pix
 
@@ -1791,7 +1950,7 @@ def load_portrait_pixmap(
         raw = QPixmap(photo_path)
         if not raw.isNull():
             scaled = raw.scaled(
-                width, height, Qt.KeepAspectRatioByExpanding, Qt.SmoothTransformation
+                width, height, ASPECT_KEEP_EXPAND, SMOOTH_TRANSFORM
             )
             # Center-crop to exact target rectangle
             sx = max(0, (scaled.width() - width) // 2)
@@ -1799,9 +1958,9 @@ def load_portrait_pixmap(
             cropped = scaled.copy(sx, sy, width, height)
 
             out = QPixmap(width, height)
-            out.fill(Qt.transparent)
+            out.fill(COLOR_TRANSPARENT)
             painter = QPainter(out)
-            painter.setRenderHint(QPainter.Antialiasing)
+            painter.setRenderHint(PAINTER_ANTIALIASING)
             path = QPainterPath()
             path.addRoundedRect(1, 1, width - 2, height - 2, 10, 10)
             painter.setClipPath(path)
@@ -1809,7 +1968,7 @@ def load_portrait_pixmap(
             painter.setClipping(False)
             if border_color:
                 painter.setPen(QPen(QColor(border_color), 3))
-                painter.setBrush(Qt.NoBrush)
+                painter.setBrush(NO_BRUSH)
                 painter.drawRoundedRect(2, 2, width - 4, height - 4, 10, 10)
             painter.end()
             return out
@@ -1956,11 +2115,11 @@ APP_STYLESHEET = """
 QMainWindow, QWidget {
     background-color: #0f172a;
     color: #f1f5f9;
-    font-family: "Helvetica Neue", "Segoe UI", Arial, sans-serif;
+    font-family: "Helvetica Neue", Arial;
     font-size: 13px;
 }
 
-QFrame#Card QLabel, QFrame#LoginCard QLabel, QFrame#StudentCard QLabel, QFrame#IdentCard QLabel, QFrame#TopBar QLabel {
+QFrame#Card QLabel, QFrame#LoginCard QLabel, QFrame#StudentCard QLabel, QFrame#IdentCard QLabel, QFrame#TopBar QLabel, QDialog QLabel {
     background-color: transparent;
 }
 
@@ -2238,7 +2397,7 @@ def make_badge_label(text: str, bg: str, fg: str = "#ffffff") -> QLabel:
         f"background-color: {bg}; color: {fg}; border-radius: 6px; "
         f"padding: 3px 9px; font-weight: 700; font-size: 11px;"
     )
-    lbl.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+    lbl.setSizePolicy(SP_FIXED, SP_FIXED)
     return lbl
 
 
@@ -2270,10 +2429,10 @@ class ClickablePhotoLabel(QLabel):
 
     def __init__(self, parent: Optional[QWidget] = None):
         super().__init__(parent)
-        self.setCursor(Qt.PointingHandCursor)
+        self.setCursor(CURSOR_HAND)
 
     def mousePressEvent(self, event) -> None:
-        if event.button() == Qt.LeftButton:
+        if event.button() == LEFT_BUTTON:
             self.clicked.emit()
         super().mousePressEvent(event)
 
@@ -2290,16 +2449,16 @@ class PhotoZoomDialog(QDialog):
 
         title = QLabel(f"{student['full_name']}  •  {student['matricule']}")
         title.setObjectName("SectionTitle")
-        title.setAlignment(Qt.AlignCenter)
+        title.setAlignment(ALIGN_CENTER)
         layout.addWidget(title)
 
         sub = QLabel(f"{student['field']} — {student['option_name']} ({student['academic_year']})")
         sub.setObjectName("MutedLabel")
-        sub.setAlignment(Qt.AlignCenter)
+        sub.setAlignment(ALIGN_CENTER)
         layout.addWidget(sub)
 
         photo_lbl = QLabel()
-        photo_lbl.setAlignment(Qt.AlignCenter)
+        photo_lbl.setAlignment(ALIGN_CENTER)
         pix = load_portrait_pixmap(
             student.get("front_photo_path", ""),
             student["full_name"],
@@ -2646,9 +2805,9 @@ class EditStudentDialog(QDialog):
                 "Age Accuracy Alert",
                 f"{age_res.accuracy_note}\n\n"
                 f"Save using DOB-calculated age ({age_res.age_years} years)?",
-                QMessageBox.Yes | QMessageBox.No,
+                MSG_YES | MSG_NO,
             )
-            if reply != QMessageBox.Yes:
+            if reply != MSG_YES:
                 return
 
         ok, msg = self.db.update_student_info(
@@ -2721,8 +2880,8 @@ class StudentDetailDialog(QDialog):
             )
         )
         photo_lbl.setToolTip("Click to view full front photo")
-        photo_lbl.clicked.connect(lambda: PhotoZoomDialog(student, self).exec_())
-        top_layout.addWidget(photo_lbl, 0, Qt.AlignTop)
+        photo_lbl.clicked.connect(lambda: PhotoZoomDialog(student, self).exec())
+        top_layout.addWidget(photo_lbl, 0, ALIGN_TOP)
 
         info_col = QVBoxLayout()
         info_col.setSpacing(6)
@@ -2766,8 +2925,8 @@ class StudentDetailDialog(QDialog):
             vl = QLabel(str(v))
             vl.setWordWrap(True)
             vl.setStyleSheet("color: #f1f5f9; font-weight: 600; background: transparent;")
-            grid.addWidget(kl, r, c, Qt.AlignTop)
-            grid.addWidget(vl, r, c + 1, Qt.AlignTop)
+            grid.addWidget(kl, r, c, ALIGN_TOP)
+            grid.addWidget(vl, r, c + 1, ALIGN_TOP)
         info_col.addLayout(grid)
         info_col.addWidget(make_milestone_strip(access.milestones))
         top_layout.addLayout(info_col, 1)
@@ -2783,9 +2942,9 @@ class StudentDetailDialog(QDialog):
         pay_table.setHorizontalHeaderLabels(
             ["Payment Date", "Amount Added", "Cumulative Total", "Tranche", "Recorded By", "Notes"]
         )
-        pay_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        pay_table.horizontalHeader().setSectionResizeMode(HDR_STRETCH)
         pay_table.verticalHeader().setVisible(False)
-        pay_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        pay_table.setEditTriggers(EDIT_NONE)
         pay_table.setAlternatingRowColors(True)
 
         history = db.get_payment_history(student["id"])
@@ -2809,9 +2968,9 @@ class StudentDetailDialog(QDialog):
         log_table.setHorizontalHeaderLabels(
             ["Timestamp", "Confidence", "Check Month", "Decision", "Reason"]
         )
-        log_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        log_table.horizontalHeader().setSectionResizeMode(HDR_STRETCH)
         log_table.verticalHeader().setVisible(False)
-        log_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        log_table.setEditTriggers(EDIT_NONE)
         log_table.setAlternatingRowColors(True)
 
         logs = db.get_access_logs(limit=25, student_id=student["id"])
@@ -2827,7 +2986,7 @@ class StudentDetailDialog(QDialog):
         close_btn = QPushButton("Close")
         close_btn.setObjectName("SecondaryBtn")
         close_btn.clicked.connect(self.accept)
-        layout.addWidget(close_btn, 0, Qt.AlignRight)
+        layout.addWidget(close_btn, 0, ALIGN_RIGHT)
 
 
 class StudentResearchCard(QFrame):
@@ -2879,12 +3038,12 @@ class StudentResearchCard(QFrame):
         )
         photo_lbl.setFixedSize(136, 160)
         photo_lbl.setToolTip("Click to enlarge registered front photo")
-        photo_lbl.clicked.connect(lambda: PhotoZoomDialog(student, self).exec_())
-        photo_col.addWidget(photo_lbl, 0, Qt.AlignTop | Qt.AlignHCenter)
+        photo_lbl.clicked.connect(lambda: PhotoZoomDialog(student, self).exec())
+        photo_col.addWidget(photo_lbl, 0, ALIGN_TOP | ALIGN_HCENTER)
 
         photo_caption = QLabel("Front Photo")
         photo_caption.setObjectName("MutedLabel")
-        photo_caption.setAlignment(Qt.AlignCenter)
+        photo_caption.setAlignment(ALIGN_CENTER)
         photo_col.addWidget(photo_caption)
         photo_col.addStretch()
         outer.addLayout(photo_col)
@@ -2941,10 +3100,10 @@ class StudentResearchCard(QFrame):
             l_v2.setWordWrap(True)
             l_v2.setStyleSheet("color: #e2e8f0; font-weight: 600; background: transparent;")
 
-            grid.addWidget(l_k1, r_idx, 0, Qt.AlignTop)
-            grid.addWidget(l_v1, r_idx, 1, Qt.AlignTop)
-            grid.addWidget(l_k2, r_idx, 2, Qt.AlignTop)
-            grid.addWidget(l_v2, r_idx, 3, Qt.AlignTop)
+            grid.addWidget(l_k1, r_idx, 0, ALIGN_TOP)
+            grid.addWidget(l_v1, r_idx, 1, ALIGN_TOP)
+            grid.addWidget(l_k2, r_idx, 2, ALIGN_TOP)
+            grid.addWidget(l_v2, r_idx, 3, ALIGN_TOP)
         grid.setColumnStretch(1, 1)
         grid.setColumnStretch(3, 1)
         info_col.addLayout(grid)
@@ -3024,7 +3183,7 @@ class IdentifiedStudentCard(QFrame):
                 )
             )
             photo.setFixedSize(82, 96)
-            layout.addWidget(photo, 0, Qt.AlignTop)
+            layout.addWidget(photo, 0, ALIGN_TOP)
 
             col = QVBoxLayout()
             col.setSpacing(3)
@@ -3084,7 +3243,7 @@ class IdentifiedStudentCard(QFrame):
             icon = QLabel("⚠")
             icon.setStyleSheet("font-size: 28px; color: #ef4444; background: transparent;")
             icon.setFixedWidth(44)
-            icon.setAlignment(Qt.AlignCenter)
+            icon.setAlignment(ALIGN_CENTER)
             layout.addWidget(icon)
 
             col = QVBoxLayout()
@@ -3119,7 +3278,7 @@ class AdminLoginScreen(QWidget):
         self._lockout_until = 0.0
 
         outer = QVBoxLayout(self)
-        outer.setAlignment(Qt.AlignCenter)
+        outer.setAlignment(ALIGN_CENTER)
         outer.setContentsMargins(24, 24, 24, 24)
 
         card = QFrame()
@@ -3131,27 +3290,27 @@ class AdminLoginScreen(QWidget):
 
         # Emblem & Title
         emblem = QLabel("PFMS")
-        emblem.setAlignment(Qt.AlignCenter)
+        emblem.setAlignment(ALIGN_CENTER)
         emblem.setFixedSize(68, 68)
         emblem.setStyleSheet(
             "background-color: #2563eb; color: #ffffff; font-size: 18px; font-weight: 900; "
             "border-radius: 34px;"
         )
-        card_layout.addWidget(emblem, 0, Qt.AlignHCenter)
+        card_layout.addWidget(emblem, 0, ALIGN_HCENTER)
 
         title = QLabel(APP_NAME)
-        title.setAlignment(Qt.AlignCenter)
+        title.setAlignment(ALIGN_CENTER)
         title.setStyleSheet("font-size: 20px; font-weight: 800; color: #f8fafc; background: transparent;")
         card_layout.addWidget(title)
 
         subtitle = QLabel("University Biometric Face Recognition & Tuition Access Control")
-        subtitle.setAlignment(Qt.AlignCenter)
+        subtitle.setAlignment(ALIGN_CENTER)
         subtitle.setWordWrap(True)
         subtitle.setObjectName("MutedLabel")
         card_layout.addWidget(subtitle)
 
         sep = QFrame()
-        sep.setFrameShape(QFrame.HLine)
+        sep.setFrameShape(FRAME_HLINE)
         sep.setStyleSheet("color: #334155;")
         card_layout.addWidget(sep)
 
@@ -3177,7 +3336,7 @@ class AdminLoginScreen(QWidget):
         pw_row.setSpacing(6)
         self.password_edit = QLineEdit()
         self.password_edit.setPlaceholderText("Enter password")
-        self.password_edit.setEchoMode(QLineEdit.Password)
+        self.password_edit.setEchoMode(ECHO_PASSWORD)
         self.password_edit.returnPressed.connect(self._attempt_login)
         pw_row.addWidget(self.password_edit, 1)
 
@@ -3211,7 +3370,7 @@ class AdminLoginScreen(QWidget):
             f"Biometric Engine: <b>{self.engine.engine_label}</b>"
         )
         hint_box.setWordWrap(True)
-        hint_box.setAlignment(Qt.AlignCenter)
+        hint_box.setAlignment(ALIGN_CENTER)
         hint_box.setStyleSheet(
             "background-color: #0b1220; color: #94a3b8; border: 1px solid #1e293b; "
             "border-radius: 8px; padding: 10px; font-size: 11px;"
@@ -3221,7 +3380,7 @@ class AdminLoginScreen(QWidget):
         outer.addWidget(card)
 
     def _toggle_pw(self, checked: bool) -> None:
-        self.password_edit.setEchoMode(QLineEdit.Normal if checked else QLineEdit.Password)
+        self.password_edit.setEchoMode(ECHO_NORMAL if checked else ECHO_PASSWORD)
         self.show_pw_btn.setText("Hide" if checked else "Show")
 
     def reset_fields(self) -> None:
@@ -3354,9 +3513,9 @@ class DashboardPage(QWidget):
         sched_table.setHorizontalHeaderLabels(
             ["Month", "Monthly Tranche", "Cumulative Required", "Access Status"]
         )
-        sched_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        sched_table.horizontalHeader().setSectionResizeMode(HDR_STRETCH)
         sched_table.verticalHeader().setVisible(False)
-        sched_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        sched_table.setEditTriggers(EDIT_NONE)
         sched_table.setFixedHeight(175)
         for r, item in enumerate(TUITION_SCHEDULE):
             sched_table.setItem(r, 0, QTableWidgetItem(item["name"]))
@@ -3382,12 +3541,12 @@ class DashboardPage(QWidget):
         self.field_table = QTableWidget(0, 4)
         self.field_table.setHorizontalHeaderLabels(["Field", "Total", "Granted", "Denied"])
         fh = self.field_table.horizontalHeader()
-        fh.setSectionResizeMode(0, QHeaderView.Stretch)
+        fh.setSectionResizeMode(0, HDR_STRETCH)
         for ci in (1, 2, 3):
-            fh.setSectionResizeMode(ci, QHeaderView.Fixed)
+            fh.setSectionResizeMode(ci, HDR_FIXED)
             self.field_table.setColumnWidth(ci, 68)
         self.field_table.verticalHeader().setVisible(False)
-        self.field_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.field_table.setEditTriggers(EDIT_NONE)
         self.field_table.setAlternatingRowColors(True)
         self.field_table.setMinimumHeight(175)
         field_layout.addWidget(self.field_table)
@@ -3417,9 +3576,9 @@ class DashboardPage(QWidget):
         self.recent_table.setHorizontalHeaderLabels(
             ["Timestamp", "Student", "Matricule", "Phone Number", "Payment Date", "Status", "Reason"]
         )
-        self.recent_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.recent_table.horizontalHeader().setSectionResizeMode(HDR_STRETCH)
         self.recent_table.verticalHeader().setVisible(False)
-        self.recent_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.recent_table.setEditTriggers(EDIT_NONE)
         self.recent_table.setAlternatingRowColors(True)
         self.recent_table.setMinimumHeight(210)
         recent_layout.addWidget(self.recent_table)
@@ -3568,7 +3727,7 @@ class LiveScannerPage(QWidget):
         ctrl_row2 = QHBoxLayout()
         ctrl_row2.setSpacing(10)
         ctrl_row2.addWidget(QLabel("Similarity Match Threshold:"))
-        self.thresh_slider = QSlider(Qt.Horizontal)
+        self.thresh_slider = QSlider(ORIENT_HORIZONTAL)
         self.thresh_slider.setRange(20, 85)
         self.thresh_slider.setValue(int(round(self.engine.default_threshold * 100)))
         self.thresh_slider.setFixedWidth(180)
@@ -3589,7 +3748,7 @@ class LiveScannerPage(QWidget):
         layout.addWidget(ctrl)
 
         # Main Splitter: Video Feed (Left) | Identified Students Panel (Right)
-        splitter = QSplitter(Qt.Horizontal)
+        splitter = QSplitter(ORIENT_HORIZONTAL)
 
         # Left Video Panel
         left_panel = QFrame()
@@ -3602,7 +3761,7 @@ class LiveScannerPage(QWidget):
             "Camera Idle\n\nClick '▶ Start Live Camera' for real-time face scanning,\n"
             "or 'Scan Image File...' to identify students in a photograph."
         )
-        self.video_label.setAlignment(Qt.AlignCenter)
+        self.video_label.setAlignment(ALIGN_CENTER)
         self.video_label.setMinimumSize(540, 400)
         self.video_label.setStyleSheet(
             "background-color: #0b1220; border: 1px solid #334155; border-radius: 10px; "
@@ -3611,7 +3770,7 @@ class LiveScannerPage(QWidget):
         left_lay.addWidget(self.video_label, 1)
 
         self.status_banner = QLabel("READY — Waiting for face scan...")
-        self.status_banner.setAlignment(Qt.AlignCenter)
+        self.status_banner.setAlignment(ALIGN_CENTER)
         self.status_banner.setFixedHeight(46)
         self.status_banner.setStyleSheet(
             "background-color: #1e293b; border: 1px solid #334155; border-radius: 8px; "
@@ -3750,7 +3909,7 @@ class LiveScannerPage(QWidget):
         annotated = draw_scan_overlays(frame_bgr, results)
         pix = bgr_to_qpixmap(annotated)
         scaled = pix.scaled(
-            self.video_label.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation
+            self.video_label.size(), ASPECT_KEEP, SMOOTH_TRANSFORM
         )
         self.video_label.setPixmap(scaled)
 
@@ -3947,7 +4106,7 @@ class RegisterStudentPage(QWidget):
             "Start the webcam to scan the student's face live,\n"
             "or click 'Upload Photo...' to enroll from a front portrait image."
         )
-        self.preview_video.setAlignment(Qt.AlignCenter)
+        self.preview_video.setAlignment(ALIGN_CENTER)
         self.preview_video.setMinimumSize(380, 260)
         self.preview_video.setStyleSheet(
             "background-color: #0b1220; border: 1px solid #334155; border-radius: 10px; color: #94a3b8;"
@@ -4020,8 +4179,8 @@ class RegisterStudentPage(QWidget):
 
         form = QFormLayout()
         form.setSpacing(9)
-        form.setLabelAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        form.setFieldGrowthPolicy(QFormLayout.AllNonFixedFieldsGrow)
+        form.setLabelAlignment(ALIGN_RIGHT | ALIGN_VCENTER)
+        form.setFieldGrowthPolicy(FORM_ALL_GROW)
 
         # Matricule
         mat_row = QHBoxLayout()
@@ -4064,7 +4223,7 @@ class RegisterStudentPage(QWidget):
         self.age_banner = QLabel()
         self.age_banner.setWordWrap(True)
         self.age_banner.setMinimumHeight(44)
-        self.age_banner.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.MinimumExpanding)
+        self.age_banner.setSizePolicy(SP_EXPANDING, SP_MIN_EXPANDING)
         form.addRow("Age Accuracy Check:", self.age_banner)
 
         # Phone Number
@@ -4101,7 +4260,7 @@ class RegisterStudentPage(QWidget):
 
         # Tuition Separator
         sep = QFrame()
-        sep.setFrameShape(QFrame.HLine)
+        sep.setFrameShape(FRAME_HLINE)
         sep.setStyleSheet("color: #334155;")
         right_lay.addLayout(form)
         right_lay.addWidget(sep)
@@ -4122,7 +4281,7 @@ class RegisterStudentPage(QWidget):
 
         pay_form = QFormLayout()
         pay_form.setSpacing(9)
-        pay_form.setLabelAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        pay_form.setLabelAlignment(ALIGN_RIGHT | ALIGN_VCENTER)
 
         self.amount_spin = QSpinBox()
         self.amount_spin.setRange(0, 5_000_000)
@@ -4323,7 +4482,7 @@ class RegisterStudentPage(QWidget):
             frame, faces, len(self.captured_embeddings), NUM_ENROLL_SAMPLES, self.capturing
         )
         pix = bgr_to_qpixmap(annotated).scaled(
-            self.preview_video.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation
+            self.preview_video.size(), ASPECT_KEEP, SMOOTH_TRANSFORM
         )
         self.preview_video.setPixmap(pix)
 
@@ -4364,7 +4523,7 @@ class RegisterStudentPage(QWidget):
         if self.cap is None:
             annotated = draw_enrollment_guide(img, [face], NUM_ENROLL_SAMPLES, NUM_ENROLL_SAMPLES, False)
             pix = bgr_to_qpixmap(annotated).scaled(
-                self.preview_video.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation
+                self.preview_video.size(), ASPECT_KEEP, SMOOTH_TRANSFORM
             )
             self.preview_video.setPixmap(pix)
 
@@ -4377,7 +4536,7 @@ class RegisterStudentPage(QWidget):
     def _refresh_front_preview(self) -> None:
         if self.best_portrait_bgr is not None:
             pix = bgr_to_qpixmap(self.best_portrait_bgr).scaled(
-                104, 120, Qt.KeepAspectRatioByExpanding, Qt.SmoothTransformation
+                104, 120, ASPECT_KEEP_EXPAND, SMOOTH_TRANSFORM
             )
             self.front_photo_preview.setPixmap(pix)
 
@@ -4435,9 +4594,9 @@ class RegisterStudentPage(QWidget):
                 "Age Verification Warning",
                 f"{age_res.accuracy_note}\n\n"
                 f"Proceed and save with DOB-determined age ({age_res.age_years} years)?",
-                QMessageBox.Yes | QMessageBox.No,
+                MSG_YES | MSG_NO,
             )
-            if reply != QMessageBox.Yes:
+            if reply != MSG_YES:
                 return
 
         # Save official front portrait photo
@@ -4586,8 +4745,8 @@ class ResearchPage(QWidget):
         self.chips_scroll = QScrollArea()
         self.chips_scroll.setWidgetResizable(True)
         self.chips_scroll.setFixedHeight(44)
-        self.chips_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-        self.chips_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.chips_scroll.setHorizontalScrollBarPolicy(SCROLLBAR_AS_NEEDED)
+        self.chips_scroll.setVerticalScrollBarPolicy(SCROLLBAR_OFF)
         self.chips_host = QWidget()
         self.chips_layout = QHBoxLayout(self.chips_host)
         self.chips_layout.setContentsMargins(0, 2, 0, 2)
@@ -4634,11 +4793,11 @@ class ResearchPage(QWidget):
                 "Access",
             ]
         )
-        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
+        self.table.horizontalHeader().setSectionResizeMode(HDR_RESIZE_TO_CONTENTS)
         self.table.horizontalHeader().setStretchLastSection(True)
         self.table.verticalHeader().setVisible(False)
-        self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.table.setEditTriggers(EDIT_NONE)
+        self.table.setSelectionBehavior(SELECT_ROWS)
         self.table.setAlternatingRowColors(True)
         self.table.cellDoubleClicked.connect(self._on_table_double_click)
         self.result_stack.addWidget(self.table)
@@ -4768,7 +4927,7 @@ class ResearchPage(QWidget):
                     "No registered students match your search criteria.\n"
                     "Try clearing filters or register a new student."
                 )
-                empty.setAlignment(Qt.AlignCenter)
+                empty.setAlignment(ALIGN_CENTER)
                 empty.setStyleSheet("color: #64748b; padding: 48px; font-size: 14px;")
                 self.cards_layout.insertWidget(0, empty)
                 return
@@ -4820,18 +4979,18 @@ class ResearchPage(QWidget):
 
     def _open_add_payment(self, student: Dict[str, Any]) -> None:
         dlg = AddPaymentDialog(self.db, student, self.admin_username, self.evaluation_mode, self)
-        if dlg.exec_() == QDialog.Accepted:
+        if dlg.exec() == DIALOG_ACCEPTED:
             self.refresh()
             self.data_changed.emit()
 
     def _open_detail(self, student: Dict[str, Any]) -> None:
         fresh = self.db.get_student_by_id(student["id"]) or student
-        StudentDetailDialog(self.db, fresh, self.evaluation_mode, self).exec_()
+        StudentDetailDialog(self.db, fresh, self.evaluation_mode, self).exec()
 
     def _open_edit(self, student: Dict[str, Any]) -> None:
         fresh = self.db.get_student_by_id(student["id"]) or student
         dlg = EditStudentDialog(self.db, self.engine, fresh, self.admin_username, self)
-        if dlg.exec_() == QDialog.Accepted:
+        if dlg.exec() == DIALOG_ACCEPTED:
             self.refresh()
             self.data_changed.emit()
 
@@ -4841,9 +5000,9 @@ class ResearchPage(QWidget):
             "Delete Registered Student",
             f"Permanently delete student '{student['full_name']}' ({student['matricule']}) "
             "and their biometric face data?",
-            QMessageBox.Yes | QMessageBox.No,
+            MSG_YES | MSG_NO,
         )
-        if reply == QMessageBox.Yes:
+        if reply == MSG_YES:
             ok, msg = self.db.delete_student(student["id"], self.admin_username)
             if ok:
                 self.refresh()
@@ -4916,7 +5075,7 @@ class PaymentsPage(QWidget):
                 f"<span style='color:#93c5fd;'>+{item['tranche']:,}</span> → "
                 f"<b style='color:#34d399;'>{item['cumulative']:,} FCFA</b>"
             )
-            box.setAlignment(Qt.AlignCenter)
+            box.setAlignment(ALIGN_CENTER)
             box.setStyleSheet(
                 "background-color: #0b1220; border: 1px solid #334155; border-radius: 8px; padding: 8px;"
             )
@@ -4967,14 +5126,14 @@ class PaymentsPage(QWidget):
             ]
         )
         ph = self.table.horizontalHeader()
-        ph.setSectionResizeMode(QHeaderView.Interactive)
+        ph.setSectionResizeMode(HDR_INTERACTIVE)
         col_widths = [115, 165, 130, 115, 95, 88, 56, 56, 56, 56]
         for ci, cw in enumerate(col_widths):
             self.table.setColumnWidth(ci, cw)
-        ph.setSectionResizeMode(10, QHeaderView.Stretch)
+        ph.setSectionResizeMode(10, HDR_STRETCH)
         self.table.verticalHeader().setVisible(False)
-        self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.table.setEditTriggers(EDIT_NONE)
+        self.table.setSelectionBehavior(SELECT_ROWS)
         self.table.setAlternatingRowColors(True)
         self.table.cellDoubleClicked.connect(lambda r, _c: self._open_payment_row(r))
         layout.addWidget(self.table, 1)
@@ -5022,7 +5181,7 @@ class PaymentsPage(QWidget):
             for ci, key in enumerate(("Sep", "Oct", "Nov", "Dec"), start=6):
                 ok = dec.milestones.get(key, False)
                 item = QTableWidgetItem("✓ Paid" if ok else "✕ Due")
-                item.setTextAlignment(Qt.AlignCenter)
+                item.setTextAlignment(ALIGN_CENTER)
                 item.setForeground(QColor("#34d399" if ok else "#94a3b8"))
                 self.table.setItem(r, ci, item)
             status_txt = (
@@ -5046,7 +5205,7 @@ class PaymentsPage(QWidget):
             st = self.db.get_student_by_id(self._rows_data[row]["id"])
             if st:
                 dlg = AddPaymentDialog(self.db, st, self.admin_username, self.evaluation_mode, self)
-                if dlg.exec_() == QDialog.Accepted:
+                if dlg.exec() == DIALOG_ACCEPTED:
                     self.refresh()
                     self.data_changed.emit()
 
@@ -5143,13 +5302,13 @@ class AccessLogsPage(QWidget):
             ]
         )
         lh = self.table.horizontalHeader()
-        lh.setSectionResizeMode(QHeaderView.Interactive)
+        lh.setSectionResizeMode(HDR_INTERACTIVE)
         l_widths = [135, 145, 112, 112, 86, 86, 74, 58, 110]
         for ci, cw in enumerate(l_widths):
             self.table.setColumnWidth(ci, cw)
-        lh.setSectionResizeMode(9, QHeaderView.Stretch)
+        lh.setSectionResizeMode(9, HDR_STRETCH)
         self.table.verticalHeader().setVisible(False)
-        self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.table.setEditTriggers(EDIT_NONE)
         self.table.setAlternatingRowColors(True)
         layout.addWidget(self.table, 1)
 
@@ -5183,9 +5342,9 @@ class AccessLogsPage(QWidget):
 
     def _clear_logs(self) -> None:
         reply = QMessageBox.question(
-            self, "Clear Access Logs", "Delete all recorded face scan logs?", QMessageBox.Yes | QMessageBox.No
+            self, "Clear Access Logs", "Delete all recorded face scan logs?", MSG_YES | MSG_NO
         )
-        if reply == QMessageBox.Yes:
+        if reply == MSG_YES:
             self.db.clear_access_logs(self.admin_username)
             self.refresh()
 
@@ -5258,11 +5417,11 @@ class SettingsPage(QWidget):
 
         pw_form = QFormLayout()
         self.old_pw_edit = QLineEdit()
-        self.old_pw_edit.setEchoMode(QLineEdit.Password)
+        self.old_pw_edit.setEchoMode(ECHO_PASSWORD)
         self.new_pw_edit = QLineEdit()
-        self.new_pw_edit.setEchoMode(QLineEdit.Password)
+        self.new_pw_edit.setEchoMode(ECHO_PASSWORD)
         self.confirm_pw_edit = QLineEdit()
-        self.confirm_pw_edit.setEchoMode(QLineEdit.Password)
+        self.confirm_pw_edit.setEchoMode(ECHO_PASSWORD)
         pw_form.addRow("Current Password:", self.old_pw_edit)
         pw_form.addRow("New Password (min 6 chars):", self.new_pw_edit)
         pw_form.addRow("Confirm New Password:", self.confirm_pw_edit)
@@ -5290,10 +5449,10 @@ class SettingsPage(QWidget):
         self.admins_table.setHorizontalHeaderLabels(
             ["Username", "Full Name", "Role", "Created", "Last Login"]
         )
-        self.admins_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.admins_table.horizontalHeader().setSectionResizeMode(HDR_STRETCH)
         self.admins_table.verticalHeader().setVisible(False)
-        self.admins_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        self.admins_table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.admins_table.setEditTriggers(EDIT_NONE)
+        self.admins_table.setSelectionBehavior(SELECT_ROWS)
         self.admins_table.setFixedHeight(160)
         adm_lay.addWidget(self.admins_table)
 
@@ -5306,7 +5465,7 @@ class SettingsPage(QWidget):
         self.new_adm_role.addItems(["Registrar Admin", "Security Officer", "Finance Admin", "Super Admin"])
         self.new_adm_pw = QLineEdit()
         self.new_adm_pw.setPlaceholderText("Password")
-        self.new_adm_pw.setEchoMode(QLineEdit.Password)
+        self.new_adm_pw.setEchoMode(ECHO_PASSWORD)
 
         add_adm_btn = QPushButton("+ Add Admin")
         add_adm_btn.clicked.connect(self._add_admin)
@@ -5370,10 +5529,12 @@ class SettingsPage(QWidget):
             self.admins_table.setItem(r, 1, QTableWidgetItem(a["full_name"]))
             self.admins_table.setItem(r, 2, QTableWidgetItem(a["role"]))
             self.admins_table.setItem(r, 3, QTableWidgetItem(a["created_at"]))
-            self.table_login = a.get("last_login") or "Never"
-            self.admins_table.setItem(r, 4, QTableWidgetItem(self.table_login))
+            last_login = a.get("last_login") or "Never"
+            self.admins_table.setItem(r, 4, QTableWidgetItem(last_login))
 
+        arch_str = f"{platform.system()} {platform.machine()} ({platform.architecture()[0]}) • {QT_BINDING}"
         self.sys_info_lbl.setText(
+            f"<b>Platform &amp; UI:</b> {arch_str}<br>"
             f"<b>Active Face Engine:</b> {self.engine.engine_label}<br>"
             f"<b>YuNet Detector Path:</b> {self.engine.yunet_path or 'Not found (using Haar fallback)'}<br>"
             f"<b>SFace Recognizer Path:</b> {self.engine.sface_path or 'Not found (using descriptor fallback)'}<br>"
@@ -5421,9 +5582,9 @@ class SettingsPage(QWidget):
             return
         adm = self._admins_cache[row]
         reply = QMessageBox.question(
-            self, "Delete Admin", f"Delete admin account '{adm['username']}'?", QMessageBox.Yes | QMessageBox.No
+            self, "Delete Admin", f"Delete admin account '{adm['username']}'?", MSG_YES | MSG_NO
         )
-        if reply == QMessageBox.Yes:
+        if reply == MSG_YES:
             ok, msg = self.db.delete_admin(adm["id"], self.current_admin["username"])
             if ok:
                 self.refresh()
@@ -5432,7 +5593,7 @@ class SettingsPage(QWidget):
                 QMessageBox.warning(self, "Cannot Delete", msg)
 
     def _download_models(self) -> None:
-        QApplication.setOverrideCursor(Qt.WaitCursor)
+        QApplication.setOverrideCursor(CURSOR_WAIT)
         try:
             ok, msg = self.engine.download_onnx_models()
         finally:
@@ -5709,7 +5870,7 @@ def main() -> int:
     app.setStyleSheet(APP_STYLESHEET)
     window = PondiFacialManagementApp()
     window.show()
-    return app.exec_()
+    return app.exec()
 
 
 if __name__ == "__main__":
